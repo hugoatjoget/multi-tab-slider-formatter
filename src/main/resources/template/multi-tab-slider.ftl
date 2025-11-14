@@ -928,33 +928,7 @@
         }
 
         function makeMultiTabId(url) {
-            try {
-                var urlParts = url.split('?');
-                var baseUrl = urlParts[0];
-                var idParam = null;
-                
-                if (urlParts[1]) {
-                    var params = urlParts[1].split('&');
-                    for (var i = 0; i < params.length; i++) {
-                        var pair = params[i].split('=');
-                        if (pair[0] === 'id' && pair[1]) {
-                            idParam = decodeURIComponent(pair[1]);
-                            break;
-                        }
-                    }
-                }
-                
-                var tabIdentifier = baseUrl;
-                if (idParam) {
-                    tabIdentifier += '_id_' + idParam;
-                }
-                
-                return btoa(encodeURIComponent(tabIdentifier)).replace(/[+/=]/g, function(match) {
-                    return { '+': '-', '/': '_', '=': '' }[match];
-                });
-            } catch (e) {
-                return 'tab_' + Date.now();
-            }
+            return decodeURIComponent(url);
         }
 
         function validateUrl(url) {
