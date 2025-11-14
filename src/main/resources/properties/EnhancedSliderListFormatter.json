@@ -1,0 +1,101 @@
+[
+   {
+      "title":"@@org.joget.marketplace.EnhancedSliderListFormatter.config@@",
+      "properties":[
+         {
+            "label":"@@org.joget.marketplace.EnhancedSliderListFormatter.hyperlink@@",
+            "name":"href",
+            "type":"textfield",
+            "description":"@@org.joget.marketplace.EnhancedSliderListFormatter.hyperlink.desc@@"
+         },
+         
+         {
+            "name":"parameters",
+            "label":"@@datalist.hyperlinkdatalistaction.hyperlinkParameters@@",
+            "type":"gridCombine",
+            "columns":[
+               {
+                  "key":"hrefParam",
+                  "label":"@@datalist.hyperlinkdatalistaction.hyperlinkParamName@@"
+               },
+               {
+                  "key":"hrefColumn",
+                  "label":"@@datalist.hyperlinkdatalistaction.columnName@@",
+                  "type":"autocomplete",
+                  "options_callback":"DatalistBuilder.getColumnOptions"
+               }
+            ]
+         },
+         {
+            "label":"@@datalist.hyperlinkdatalistaction.label@@",
+            "name":"label",
+            "type":"textfield",
+            "description":"@@datalist.hyperlinkdatalistaction.label.desc@@",
+            "value":"Open",
+            "required":"false"
+         },
+         {
+            "label":"@@org.joget.marketplace.EnhancedSliderListFormatter.sliderWidth@@",
+            "name":"width",
+            "type":"textfield",
+            "value":"50%",
+            "required":"true"
+         },
+         {
+            "label":"@@org.joget.marketplace.EnhancedSliderListFormatter.editMode@@",
+            "name":"editMode",
+            "type":"checkbox",
+            "value":"true",
+            "description":"@@org.joget.marketplace.EnhancedSliderListFormatter.editMode.desc@@"
+         },
+         {
+            "label":"@@dbuilder.displayType@@",
+            "name":"link-css-display-type",
+            "type":"selectbox",
+            "value":"btn btn-sm btn-primary",
+            "options":[
+               {
+                  "label":"@@dbuilder.default@@",
+                  "value":""
+               },
+               {
+                  "label":"@@dbuilder.btn.link@@",
+                  "value":"btn btn-link"
+               },
+               {
+                  "label":"@@dbuilder.btn.primary@@",
+                  "value":"btn btn-sm btn-primary"
+               },
+               {
+                  "label":"@@dbuilder.btn.secondary@@",
+                  "value":"btn btn-sm btn-secondary"
+               },
+               {
+                  "label":"@@dbuilder.btn.success@@",
+                  "value":"btn btn-sm btn-success"
+               },
+               {
+                  "label":"@@dbuilder.btn.danger@@",
+                  "value":"btn btn-sm btn-danger"
+               },
+               {
+                  "label":"@@dbuilder.btn.warning@@",
+                  "value":"btn btn-sm btn-warning"
+               },
+               {
+                  "label":"@@dbuilder.btn.info@@",
+                  "value":"btn btn-sm btn-info"
+               },
+               {
+                  "label":"@@dbuilder.btn.light@@",
+                  "value":"btn btn-sm btn-light"
+               },
+               {
+                  "label":"@@dbuilder.btn.dark@@",
+                  "value":"btn btn-sm btn-dark"
+               }
+            ]
+         }
+      ]
+   }
+]
