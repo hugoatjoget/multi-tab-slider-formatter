@@ -722,10 +722,6 @@
         var activeMultiTabId = null;
         var editModeEnabled = ${editMode?c!false};
 
-        // Form state management
-        var tabFormStates = {}; 
-        var formStateWatchers = {}; 
-
         // Flag to prevent double initialization
         var isInitialized = false;
 
@@ -1052,8 +1048,6 @@
                 
                 multiTabSliderTabs.push(newTab);
                 
-                tabFormStates[tabId] = {};
-                
                 renderMultiTabList();
                 setActiveMultiTab(tabId);
                 updateTabCountIndicator();
@@ -1109,17 +1103,14 @@
                     return tab.id === tabId;
                 });
                 
-          
-                
-                if (tabId === activeMultiTabId) {
-                    var contentDiv = document.getElementById('multiTabContent');
-                    var iframe = contentDiv ? contentDiv.querySelector('iframe') : null;
+                // Remove the iframe for this tab
+                var contentDiv = document.getElementById('multiTabContent');
+                if (contentDiv) {
+                    var iframe = contentDiv.querySelector('iframe[data-tab-id="' + tabId + '"]');
                     if (iframe) {
-                        captureFormState(tabId, iframe);
+                        iframe.remove();
                     }
                 }
-                
-                cleanupFormStateWatcher(tabId);
                 
                 multiTabSliderTabs.splice(tabIndex, 1);
                 
@@ -1143,15 +1134,6 @@
 
         function setActiveMultiTab(tabId) {
             try {
-                // Capture current tab's form state before switching
-                if (activeMultiTabId && activeMultiTabId !== tabId) {
-                    var currentContentDiv = document.getElementById('multiTabContent');
-                    var currentIframe = currentContentDiv ? currentContentDiv.querySelector('iframe') : null;
-                    if (currentIframe) {
-                        captureFormState(activeMultiTabId, currentIframe);
-                    }
-                }
-                
                 var tab = multiTabSliderTabs.find(function(t) {
                     return t.id === tabId;
                 });
@@ -1159,17 +1141,27 @@
                 if (!tab) {
                     return;
                 }
-                
-                activeMultiTabId = tabId;
-                
-                renderMultiTabList();
-                
-                var urlToLoad = tab.originalUrl || tab.url;
-                if (tabFormStates[tabId] && Object.keys(tabFormStates[tabId]).length > 0) {
-                    urlToLoad = buildUrlWithFormData(urlToLoad, tabId);
+
+                // If already on this tab, just return (no reload)
+                if (activeMultiTabId === tabId) {
+                    renderMultiTabList();
+                    return;
+                }
+
+                // Capture current tab's form state before switching
+                if (activeMultiTabId) {
+                    var currentContentDiv = document.getElementById('multiTabContent');
+                    var currentIframe = currentContentDiv ? currentContentDiv.querySelector('iframe') : null;
+                    if (currentIframe) {
+                        // Form state is preserved naturally in the iframe DOM
+                    }
                 }
                 
-                loadMultiTabContent(urlToLoad, tabId);
+                activeMultiTabId = tabId;
+                renderMultiTabList();
+                
+                // Load the tab content (only when switching to a different tab)
+                loadMultiTabContent(tab.originalUrl || tab.url, tabId);
                 
             } catch (error) {
                 // Error setting active tab
@@ -1179,82 +1171,70 @@
         function loadMultiTabContent(url, tabId) {
             var contentDiv = document.getElementById('multiTabContent');
             var loadingDiv = document.getElementById('multiTabLoading');
-            
+
             if (!contentDiv) {
                 return;
             }
+
+            // Check if iframe for this tab already exists
+            var existingIframe = contentDiv.querySelector('iframe[data-tab-id="' + tabId + '"]');
             
+            if (existingIframe) {
+                // Tab already loaded - just show it and hide others
+                var allIframes = contentDiv.querySelectorAll('iframe');
+                allIframes.forEach(function(iframe) {
+                    iframe.style.display = 'none';
+                });
+                
+                existingIframe.style.display = 'block';
+                
+                if (loadingDiv) {
+                    loadingDiv.style.display = 'none';
+                }
+                
+                return;
+            }
+
+            // New tab - create and load iframe
             if (loadingDiv) {
                 loadingDiv.style.display = 'flex';
             }
-            
-            var existingIframe = contentDiv.querySelector('iframe');
-            if (existingIframe && activeMultiTabId) {
-                captureFormState(activeMultiTabId, existingIframe);
-                cleanupFormStateWatcher(activeMultiTabId);
-                existingIframe.remove();
-            }
-            
+
+            // Hide all other iframes
+            var allIframes = contentDiv.querySelectorAll('iframe');
+            allIframes.forEach(function(iframe) {
+                iframe.style.display = 'none';
+            });
+
             var iframe = document.createElement('iframe');
+            iframe.setAttribute('data-tab-id', tabId);
             iframe.src = url;
             iframe.style.display = 'none';
-            
+
             iframe.onload = function() {
                 if (loadingDiv) {
                     loadingDiv.style.display = 'none';
                 }
                 iframe.style.display = 'block';
-                
-                try {
-                    setTimeout(function() {
-                        if (iframe.contentDocument) {
-                            setupFormStateWatcher(tabId || activeMultiTabId, iframe);
-                            
-                            var currentUrl = new URL(iframe.src, window.location.origin);
-                            var hasUrlParams = currentUrl.searchParams.toString().length > 0;
-                            
-                            if (hasUrlParams && tabFormStates[tabId || activeMultiTabId]) {
-                                setTimeout(function() {
-                                    captureFormState(tabId || activeMultiTabId, iframe);
-                                }, 1000);
-                            }
-                        }
-                    }, 1000);
-                } catch (error) {
-                    // Error setting up form management
-                }
             };
-            
+
             iframe.onerror = function() {
                 if (loadingDiv) {
                     loadingDiv.innerHTML = '<div style="color: red;">Error loading content</div>';
                 }
             };
-            
+
             contentDiv.appendChild(iframe);
         }
 
         function closeMultiTabSlider() {
-            if (activeMultiTabId) {
-                var contentDiv = document.getElementById('multiTabContent');
-                var iframe = contentDiv ? contentDiv.querySelector('iframe') : null;
-                if (iframe) {
-                    captureFormState(activeMultiTabId, iframe);
-                }
-            }
-            
             var slider = document.getElementById('multiTabSlider');
             if (slider) {
                 slider.classList.remove('open', 'minimized');
             }
             
-            Object.keys(formStateWatchers).forEach(function(tabId) {
-                cleanupFormStateWatcher(tabId);
-            });
-            
             multiTabSliderTabs = [];
             activeMultiTabId = null;
-            tabFormStates = {};
             updateTabCountIndicator();
             
             var tabList = document.getElementById('multiTabList');
@@ -1264,10 +1244,10 @@
             
             var contentDiv = document.getElementById('multiTabContent');
             if (contentDiv) {
-                var iframe = contentDiv.querySelector('iframe');
-                if (iframe) {
+                var iframes = contentDiv.querySelectorAll('iframe');
+                iframes.forEach(function(iframe) {
                     iframe.remove();
-                }
+                });
                 var loadingDiv = document.getElementById('multiTabLoading');
                 if (loadingDiv) {
                     loadingDiv.style.display = 'flex';
@@ -1277,14 +1257,6 @@
         }
 
         function minimizeMultiTabSlider() {
-            if (activeMultiTabId) {
-                var contentDiv = document.getElementById('multiTabContent');
-                var iframe = contentDiv ? contentDiv.querySelector('iframe') : null;
-                if (iframe) {
-                    captureFormState(activeMultiTabId, iframe);
-                }
-            }
-            
             var slider = document.getElementById('multiTabSlider');
             var indicator = document.getElementById('minimizeIndicator');
             
@@ -1313,378 +1285,6 @@
             }
         }
 
-        function captureFormState(tabId, iframe) {
-            try {
-                if (!iframe || !iframe.contentDocument) {
-                    return;
-                }
-                
-                var doc = iframe.contentDocument;
-                var formData = {};
-                
-                var inputs = doc.querySelectorAll('input, select, textarea');
-                
-                inputs.forEach(function(element) {
-                    var fieldKey = element.id || element.name;
-                    if (!fieldKey) {
-                        return;
-                    }
-                    
-                    var value = null;
-                    var hasValue = false;
-                    var preserveFormat = false;
-                    var rawValue = null;
-                    
-                    function isDateTimeField(element) {
-                        if (element.type === 'date' || element.type === 'datetime-local' || 
-                            element.type === 'time' || element.type === 'month' || element.type === 'week') {
-                            return true;
-                        }
-                        
-                        var fieldName = (element.name || element.id || '').toLowerCase();
-                        if (fieldName.includes('date') || fieldName.includes('time')) {
-                            return true;
-                        }
-                        
-                        var className = (element.className || '').toLowerCase();
-                        if (className.includes('date') || className.includes('time')) {
-                            return true;
-                        }
-                        
-                        if (element.getAttribute('data-type') === 'date') {
-                            return true;
-                        }
-                        
-                        var val = element.value;
-                        if (val && typeof val === 'string') {
-                            // Match various date/time patterns including dd/MM/yyyy hh:mm am/pm
-                            var datePatterns = [
-                                /^\d{1,2}\/\d{1,2}\/\d{4}$/,                    // dd/MM/yyyy
-                                /^\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2}$/,   // dd/MM/yyyy hh:mm
-                                /^\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2}\s+(AM|PM|am|pm)$/, // dd/MM/yyyy hh:mm am/pm
-                                /^\d{1,2}-\d{1,2}-\d{4}$/,                     // dd-MM-yyyy
-                                /^\d{1,2}-\d{1,2}-\d{4}\s+\d{1,2}:\d{2}$/,     // dd-MM-yyyy hh:mm
-                                /^\d{1,2}-\d{1,2}-\d{4}\s+\d{1,2}:\d{2}\s+(AM|PM|am|pm)$/, // dd-MM-yyyy hh:mm am/pm
-                                /^\d{4}-\d{1,2}-\d{1,2}$/,                     // yyyy-MM-dd
-                                /^\d{4}-\d{1,2}-\d{1,2}\s+\d{1,2}:\d{2}$/,     // yyyy-MM-dd hh:mm
-                                /^\d{4}-\d{1,2}-\d{1,2}T\d{1,2}:\d{2}$/,       // yyyy-MM-ddThh:mm
-                                /^\d{1,2}:\d{2}$/,                             // hh:mm
-                                /^\d{1,2}:\d{2}\s+(AM|PM|am|pm)$/              // hh:mm am/pm
-                            ];
-                            
-                            return datePatterns.some(function(pattern) {
-                                return pattern.test(val);
-                            });
-                        }
-                        
-                        return false;
-                    }
-                    
-                    switch (element.type) {
-                        case 'checkbox':
-                        case 'radio':
-                            value = element.checked;
-                            hasValue = element.checked;
-                            break;
-                        case 'file':
-                            return;
-                        case 'password':
-                            return;
-                        case 'hidden':
-                            value = element.value;
-                            hasValue = element.value !== null && element.value !== '';
-                            preserveFormat = isDateTimeField(element);
-                            if (preserveFormat) {
-                                rawValue = element.value;
-                            }
-                            break;
-                        default:
-                            value = element.value;
-                            hasValue = element.value !== null && element.value !== '';
-                            preserveFormat = isDateTimeField(element);
-                            if (preserveFormat) {
-                                rawValue = element.value;
-                            }
-                            break;
-                    }
-                    
-                    if (hasValue) {
-                        var fieldData = {
-                            value: value,
-                            type: element.type,
-                            tagName: element.tagName.toLowerCase(),
-                            id: element.id,
-                            name: element.name,
-                            originalValue: element.defaultValue || element.defaultChecked, // Store original value for comparison
-                            preserveFormat: preserveFormat
-                        };
-                        
-                        if (preserveFormat && rawValue !== null) {
-                            fieldData.rawValue = rawValue;
-                        }
-                        
-                        formData[fieldKey] = fieldData;
-                        
-                        if (preserveFormat && rawValue !== null) {
-                            //
-                        }
-                    }
-                });
-                
-                tabFormStates[tabId] = formData;
-                
-            } catch (error) {
-                // Error capturing form state
-            }
-        }
-
-        function restoreFormState(tabId, iframe) {
-            try {
-                if (!iframe || !iframe.contentDocument || !tabFormStates[tabId]) {
-                    return;
-                }
-                
-                var doc = iframe.contentDocument;
-                var formData = tabFormStates[tabId];
-                
-                setTimeout(function() {
-                    Object.keys(formData).forEach(function(fieldName) {
-                        var fieldData = formData[fieldName];
-                        var elements = doc.querySelectorAll('[name="' + fieldName + '"], [id="' + fieldName + '"]');
-                        
-                        elements.forEach(function(element) {
-                            try {
-                                switch (fieldData.type) {
-                                    case 'checkbox':
-                                    case 'radio':
-                                        element.checked = fieldData.value;
-                                        break;
-                                    case 'file':
-                                        break;
-                                    default:
-                                        if (fieldData.preserveFormat && fieldData.rawValue !== undefined) {
-                                            element.value = fieldData.rawValue;
-                                        } else {
-                                            element.value = fieldData.value;
-                                        }
-                                        break;
-                                }
-                                
-                                var event = new Event('change', { bubbles: true });
-                                element.dispatchEvent(event);
-                                
-                            } catch (error) {
-                                // Error restoring field
-                            }
-                        });
-                    });
-                    
-                }, 500);
-                
-            } catch (error) {
-                // Error restoring form state
-            }
-        }
-
-        function setupFormStateWatcher(tabId, iframe) {
-            try {
-                if (!iframe || !iframe.contentDocument) {
-                    return;
-                }
-                
-                var doc = iframe.contentDocument;
-                
-                if (formStateWatchers[tabId]) {
-                    clearInterval(formStateWatchers[tabId]);
-                }
-                
-                var inputs = doc.querySelectorAll('input, select, textarea');
-                
-                formStateWatchers[tabId] = setInterval(function() {
-                    if (activeMultiTabId === tabId) {
-                        captureFormState(tabId, iframe);
-                    }
-                }, 5000);
-                
-                inputs.forEach(function(element) {
-                    var fieldKey = element.id || element.name;
-                    if (!fieldKey) return;
-                    
-                    element.addEventListener('change', function() {
-                        if (activeMultiTabId === tabId) {
-                            clearTimeout(element._captureTimeout);
-                            element._captureTimeout = setTimeout(function() {
-                                captureFormState(tabId, iframe);
-                            }, 1000);
-                        }
-                    });
-                    
-                    if (element.type === 'text' || element.type === 'textarea' || 
-                        element.type === 'email' || element.type === 'number' || 
-                        element.type === 'tel' || element.type === 'url' || 
-                        element.type === 'search' || element.tagName.toLowerCase() === 'textarea') {
-                        
-                        element.addEventListener('input', function() {
-                            if (activeMultiTabId === tabId) {
-                                clearTimeout(element._captureTimeout);
-                                element._captureTimeout = setTimeout(function() {
-                                    captureFormState(tabId, iframe);
-                                }, 2000); 
-                            }
-                        });
-                    }
-                    
-                    element.addEventListener('blur', function() {
-                        if (activeMultiTabId === tabId) {
-                            clearTimeout(element._captureTimeout);
-                            element._captureTimeout = setTimeout(function() {
-                                captureFormState(tabId, iframe);
-                            }, 500);
-                        }
-                    });
-                });
-
-                setTimeout(function() {
-                    captureFormState(tabId, iframe);
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Error setting up form state watcher:', error);
-            }
-        }
-
-        function buildUrlWithFormData(originalUrl, tabId) {
-            try {
-                if (!tabFormStates[tabId] || Object.keys(tabFormStates[tabId]).length === 0) {
-                    return originalUrl;
-                }
-                
-                var formData = tabFormStates[tabId];
-                
-                var urlParts = originalUrl.split('?');
-                var baseUrl = urlParts[0];
-                var existingParams = urlParts[1] || '';
-                
-                var url;
-                try {
-                    url = new URL(baseUrl, window.location.origin);
-                } catch (e) {
-                    if (baseUrl.startsWith('/')) {
-                        url = new URL(window.location.origin + baseUrl);
-                    } else {
-                        url = new URL(baseUrl, window.location.href);
-                    }
-                }
-                
-                if (existingParams) {
-                    var paramPairs = existingParams.split('&');
-                    paramPairs.forEach(function(pair) {
-                        var keyValue = pair.split('=');
-                        if (keyValue.length === 2) {
-                            url.searchParams.set(decodeURIComponent(keyValue[0]), decodeURIComponent(keyValue[1]));
-                        }
-                    });
-                }
-                
-                var paramCount = 0;
-                Object.keys(formData).forEach(function(fieldKey) {
-                    var fieldData = formData[fieldKey];
-                    
-                    if (fieldData.type === 'password' || fieldData.type === 'file' || 
-                        fieldData.type === 'submit' || fieldData.type === 'button' ||
-                        fieldData.type === 'reset') {
-                        return;
-                    }
-                    
-                    var paramValue = null;
-                    var paramName = null;
-                    
-                    switch (fieldData.type) {
-                        case 'checkbox':
-                        case 'radio':
-                            if (fieldData.value === true) {
-                                paramValue = '1';
-                            }
-                            break;
-                        case 'hidden':
-                            if (fieldData.value !== null && fieldData.value !== '' && fieldData.value !== undefined) {
-                                if (fieldData.preserveFormat && fieldData.rawValue !== undefined) {
-                                    paramValue = fieldData.rawValue;
-                                } else {
-                                    paramValue = fieldData.value;
-                                }
-                            }
-                            break;
-                        default:
-                            if (fieldData.value !== null && fieldData.value !== '' && fieldData.value !== undefined) {
-                                if (fieldData.preserveFormat && fieldData.rawValue !== undefined) {
-                                    paramValue = fieldData.rawValue;
-                                } else {
-                                    paramValue = fieldData.value;
-                                }
-                            }
-                            break;
-                    }
-                    
-                    if (paramValue !== null) {
-                        paramName = fieldData.id || fieldKey;
-                        
-                        if (!url.searchParams.has(paramName)) {
-                            url.searchParams.set(paramName, paramValue);
-                            paramCount++;
-                        } else {
-                            url.searchParams.set(paramName, paramValue);
-                            paramCount++;
-                        }
-                    }
-                });
-                
-                var newUrl = url.toString();
-                
-                if (newUrl.includes('//') && !newUrl.startsWith('http')) {
-                    newUrl = newUrl.replace(/([^:]\/)\/+/g, "$1");
-                }
-                
-                return newUrl;
-                
-            } catch (error) {
-                return originalUrl;
-            }
-        }
-
-        function cleanupFormStateWatcher(tabId) {
-            if (formStateWatchers[tabId]) {
-                clearInterval(formStateWatchers[tabId]);
-                delete formStateWatchers[tabId];
-            }
-        }
-
-        // Manual form state management functions
-        function saveCurrentTabFormState() {
-            if (activeMultiTabId) {
-                var contentDiv = document.getElementById('multiTabContent');
-                var iframe = contentDiv ? contentDiv.querySelector('iframe') : null;
-                if (iframe) {
-                    captureFormState(activeMultiTabId, iframe);
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        function clearTabFormState(tabId) {
-            tabId = tabId || activeMultiTabId;
-            if (tabId && tabFormStates[tabId]) {
-                delete tabFormStates[tabId];
-                return true;
-            }
-            return false;
-        }
-
-        function getTabFormState(tabId) {
-            tabId = tabId || activeMultiTabId;
-            return tabFormStates[tabId] || {};
-        }
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && activeMultiTabId) {
                 minimizeMultiTabSlider();
@@ -1701,9 +1301,6 @@
         window.restoreMultiTabSlider = restoreMultiTabSlider;
         window.setActiveMultiTab = setActiveMultiTab;
         window.closeTab = closeTab;
-        window.saveCurrentTabFormState = saveCurrentTabFormState;
-        window.clearTabFormState = clearTabFormState;
-        window.getTabFormState = getTabFormState;
         window.validateUrl = validateUrl;
 
         // Set ready flag only after all functions are assigned
