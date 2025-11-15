@@ -422,7 +422,6 @@
     font-weight: 600 !important;
     box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4) !important;
     border: 2px solid rgba(255, 255, 255, 0.3) !important;
-    transform: translateY(-2px) !important;
 }
 
 .multi-tab-item.active::before {
