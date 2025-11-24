@@ -26,7 +26,7 @@ public class MultiTabSliderFormatter extends DataListColumnFormatDefault {
 
     @Override
     public String getVersion() {
-        return "1.0.0";
+        return "8.0.0";
     }
 
     @Override
@@ -67,7 +67,7 @@ public class MultiTabSliderFormatter extends DataListColumnFormatDefault {
         return getPropertyString("tabNameColumn");
     }
 
-    public String getTabName(DataList dataList, Object row, Object value, String actionType, String idValue) {
+    public String getTabName(DataList dataList, Object row, Object value, String idValue) {
         String tabNameColumn = getTabNameColumn();
         
         if (tabNameColumn != null && !tabNameColumn.isEmpty()) {
@@ -82,14 +82,8 @@ public class MultiTabSliderFormatter extends DataListColumnFormatDefault {
             }
         }
         
-        // Fallback to default tab name format (action type + ID)
-        if (idValue != null && !idValue.isEmpty()) {
-            String actionLabel = "edit".equalsIgnoreCase(actionType) ? "Edit" : "View";
-            return actionLabel + " ID: " + idValue;
-        } else {
-            String actionLabel = "edit".equalsIgnoreCase(actionType) ? "Edit" : "View";
-            return actionLabel + " Page";
-        }
+        //fallback
+        return idValue;
     }
 
     public String getLinkLabel(DataList dataList, Object row, Object value) {
@@ -141,29 +135,19 @@ public class MultiTabSliderFormatter extends DataListColumnFormatDefault {
         HttpServletRequest request = WorkflowUtil.getHttpServletRequest();
 
         try {
-            LogUtil.info(getClassName(), "Multi-Tab Slider Formatter: Starting format process");
-            
             if (request != null && request.getAttribute(getClassName()) == null) {
-                LogUtil.info(getClassName(), "Multi-Tab Slider Formatter: Initializing template resources");
+                // LogUtil.info(getClassName(), "Initializing template resources");
 
                 PluginManager pluginManager = (PluginManager) AppUtil.getApplicationContext().getBean("pluginManager");
-                if (pluginManager == null) {
-                    LogUtil.error(getClassName(), new RuntimeException("PluginManager is null"), "Multi-Tab Slider Formatter: PluginManager is null");
-                    return "<div style='color: red; font-weight: bold;'>Multi-Tab Slider: PluginManager not available</div>";
-                }
                 
                 Map model = new HashMap();
                 model.put("element", this);
+                
                 if (getPropertyString("width") != null) {
                     model.put("width", getPropertyString("width"));
                 } else {
                     model.put("width", "50%");
                 }
-                
-                // Pass edit mode setting to template
-                boolean editMode = "true".equals(getPropertyString("editMode"));
-                model.put("editMode", editMode);
-                LogUtil.info(getClassName(), "Multi-Tab Slider Formatter: Edit mode enabled: " + editMode);
                 
                 // Pass styling properties to template
                 Map<String, String> styling = new HashMap<>();
@@ -184,13 +168,13 @@ public class MultiTabSliderFormatter extends DataListColumnFormatDefault {
                 styling.put("tabMaxWidth", getPropertyString("tabMaxWidth") != null ? getPropertyString("tabMaxWidth") : "200px");
                 styling.put("controlButtonSize", getPropertyString("controlButtonSize") != null ? getPropertyString("controlButtonSize") : "36px");
                 model.put("styling", styling);
-                LogUtil.info(getClassName(), "Multi-Tab Slider Formatter: Styling configuration loaded");
+                // LogUtil.info(getClassName(), "Styling configuration loaded");
 
                 try {
                     content += pluginManager.getPluginFreeMarkerTemplate(model, getClass().getName(), "/template/multi-tab-slider.ftl", null);
-                    LogUtil.info(getClassName(), "Multi-Tab Slider Formatter: Template rendered successfully");
+                    // LogUtil.info(getClassName(), "Template rendered successfully");
                 } catch (Exception templateException) {
-                    LogUtil.error(getClassName(), templateException, "Multi-Tab Slider Formatter: Error loading template: " + templateException.getMessage());
+                    LogUtil.error(getClassName(), templateException, "Error loading template: " + templateException.getMessage());
                     // Fallback: return a simple error message instead of failing completely
                     return "<div style='color: red; font-weight: bold;'>Multi-Tab Slider: Template Error - " + templateException.getMessage() + "</div>";
                 }
@@ -202,73 +186,64 @@ public class MultiTabSliderFormatter extends DataListColumnFormatDefault {
             String hrefParam = getHrefParam();
             String hrefColumn = getHrefColumn();
             
-            LogUtil.info(getClassName(), "Multi-Tab Slider Formatter: Processing URL generation - Base URL: " + url);
+            // LogUtil.info(getClassName(), "Processing URL generation - Base URL: " + url);
 
             if (url == null || url.isEmpty()) {
-                LogUtil.info(getClassName(), "No URL configured in href property");
-            } else {
-                LogUtil.info(getClassName(), "URL params - hrefParam: " + hrefParam + ", hrefColumn: " + hrefColumn);
-                
-                if (hrefParam != null && hrefColumn != null && !hrefColumn.isEmpty()) {
-                    //DataListCollection rows = dataList.getRows();
-                    //String primaryKeyColumnName = dataList.getBinder().getPrimaryKeyColumnName();
+                //keep it empty, assume will use current page's link
+                url = "";
+            }
+            
+            // LogUtil.info(getClassName(), "URL params - hrefParam: " + hrefParam + ", hrefColumn: " + hrefColumn);    
+            if (hrefParam != null && hrefColumn != null && !hrefColumn.isEmpty()) {
+                //DataListCollection rows = dataList.getRows();
+                //String primaryKeyColumnName = dataList.getBinder().getPrimaryKeyColumnName();
 
-                    String[] params = hrefParam.split(";");
-                    String[] columns = hrefColumn.split(";");
+                String[] params = hrefParam.split(";");
+                String[] columns = hrefColumn.split(";");
 
-                    for (int i = 0; i < columns.length; i++) {
-                        if (columns[i] != null && !columns[i].isEmpty()) {
-                            boolean isValid = false;
-                            if (params.length > i && params[i] != null && !params[i].isEmpty()) {
-                                if (url.contains("?")) {
-                                    url += "&";
-                                } else {
-                                    url += "?";
-                                }
-                                url += params[i];
-                                url += "=";
-                                isValid = true;
-                            } else if (!url.contains("?")) {
-                                if (!url.endsWith("/")) {
-                                    url += "/";
-                                }
-                                isValid = true;
+                for (int i = 0; i < columns.length; i++) {
+                    if (columns[i] != null && !columns[i].isEmpty()) {
+                        boolean isValid = false;
+                        if (params.length > i && params[i] != null && !params[i].isEmpty()) {
+                            if (url.contains("?")) {
+                                url += "&";
+                            } else {
+                                url += "?";
                             }
+                            url += params[i];
+                            url += "=";
+                            isValid = true;
+                        } else if (!url.contains("?")) {
+                            if (!url.endsWith("/")) {
+                                url += "/";
+                            }
+                            isValid = true;
+                        }
 
-                            if (isValid) {
-                                try {
-                                    Object columnValue = DataListService.evaluateColumnValueFromRow(row, columns[i]);
-                                    if (columnValue != null) {
-                                        String val = columnValue.toString();
-                                        url += val + ";";
-                                        //url += getValue(row, columns[i]) + ";";
-                                        url = url.substring(0, url.length() - 1);
-                                        LogUtil.info(getClassName(), "Multi-Tab Slider Formatter: Parameter added - " + params[i] + "=" + val);
-                                    } else {
-                                        LogUtil.warn(getClassName(), "Multi-Tab Slider Formatter: Column value is null for column: " + columns[i]);
-                                    }
-                                } catch (Exception e) {
-                                    LogUtil.error(getClassName(), e, "Multi-Tab Slider Formatter: Error evaluating column value for column: " + columns[i] + " - " + e.getMessage());
+                        if (isValid) {
+                            try {
+                                Object columnValue = DataListService.evaluateColumnValueFromRow(row, columns[i]);
+                                if (columnValue != null) {
+                                    String val = columnValue.toString();
+                                    url += val + ";";
+                                    //url += getValue(row, columns[i]) + ";";
+                                    url = url.substring(0, url.length() - 1);
+                                    // LogUtil.info(getClassName(), "Parameter added - " + params[i] + "=" + val);
+                                } else {
+                                    LogUtil.warn(getClassName(), "Column value is null for column: " + columns[i]);
                                 }
+                            } catch (Exception e) {
+                                LogUtil.error(getClassName(), e, "Error evaluating column value for column: " + columns[i] + " - " + e.getMessage());
                             }
                         }
                     }
                 }
             }
         
-            // Append edit mode parameter if enabled
-            String editMode = getPropertyString("editMode");
-            if ("true".equals(editMode) && url.indexOf("_mode=edit") == -1) {
-                String separator = url.contains("?") ? "&" : "?";
-                url += separator + "_mode=edit";
-                LogUtil.info(getClassName(), "Multi-Tab Slider Formatter: Edit mode parameter added to URL");
-            }
-        
-            LogUtil.info(getClassName(), "Multi-Tab Slider Formatter: Final URL generated: " + url);
+            // LogUtil.info(getClassName(), "Final URL generated: " + url);
 
             // Extract ID value for tab name generation
             String idValue = null;
-            String actionType = "true".equals(editMode) ? "edit" : "view";
             
             if (hrefParam != null && hrefColumn != null && !hrefColumn.isEmpty()) {
                 String[] params = hrefParam.split(";");
@@ -290,35 +265,17 @@ public class MultiTabSliderFormatter extends DataListColumnFormatDefault {
             }
             
             // Generate tab name using the new method
-            String tabName = getTabName(dataList, row, value, actionType, idValue);
+            String tabName = getTabName(dataList, row, value, idValue);
             if (tabName == null) {
                 tabName = "Tab"; // Fallback tab name
             }
-            LogUtil.info(getClassName(), "Multi-Tab Slider Formatter: Generated tab name: " + tabName);
+            // LogUtil.info(getClassName(), "Generated tab name: " + tabName);
 
             Object displayStyleObj = getProperty("link-css-display-type");
             String displayStyle = displayStyleObj != null ? displayStyleObj.toString() : "btn btn-primary";
             displayStyle += " noAjax no-close";
-
-            // Create a safer button that checks if the function exists and passes tab name
-            String buttonScript = "console.log('Button clicked for URL: " + url + "'); " +
-                                  "if(typeof window.openMultiTabSlider === 'function') { " +
-                                  "console.log('Function available, calling openMultiTabSlider'); " +
-                                  "window.openMultiTabSlider('" + url + "', '" + actionType + "', '" + tabName.replaceAll("'", "\\\\'") + "'); " +
-                                  "} else if(window.multiTabSliderReady && typeof window.openMultiTabSlider === 'function') { " +
-                                  "console.log('Script ready, calling openMultiTabSlider'); " +
-                                  "window.openMultiTabSlider('" + url + "', '" + actionType + "', '" + tabName.replaceAll("'", "\\\\'") + "'); " +
-                                  "} else { " +
-                                  "console.error('openMultiTabSlider not found - template may not be loaded'); " +
-                                  "setTimeout(function(){ " +
-                                  "if(typeof window.openMultiTabSlider === 'function'){ " +
-                                  "console.log('Function available after delay, calling openMultiTabSlider'); " +
-                                  "window.openMultiTabSlider('" + url + "', '" + actionType + "', '" + tabName.replaceAll("'", "\\\\'") + "'); " +
-                                  "}else{ " +
-                                  "alert('Slider not ready. Please refresh the page.'); " +
-                                  "} " +
-                                  "}, 100); " +
-                                  "}";
+            
+            String buttonScript = "window.openMultiTabSlider('" + url + "', '" + tabName.replaceAll("'", "\\\\'") + "'); ";
         
             // Include template content only on first call, then just return the button
             String result;
@@ -328,11 +285,11 @@ public class MultiTabSliderFormatter extends DataListColumnFormatDefault {
                 result = "<a href=\"javascript:void(0);\" class=\"" + displayStyle + "\" onClick=\"event.preventDefault(); event.stopPropagation(); " + buttonScript + " return false;\">" + getLinkLabel(dataList, row, value) + "</a>";
             }
         
-            LogUtil.info(getClassName(), "Multi-Tab Slider Formatter: Format process completed successfully");
+            // LogUtil.info(getClassName(), "Format process completed successfully");
             return result;
         
         } catch (Exception e) {
-            LogUtil.error(getClassName(), e, "Multi-Tab Slider Formatter: Error occurred during format process: " + e.toString());
+            LogUtil.error(getClassName(), e, "Error occurred during format process: " + e.toString());
             // Return a simple fallback link in case of error
             return "<a href=\"#\" class=\"btn btn-sm btn-primary\">Edit</a>";
         }

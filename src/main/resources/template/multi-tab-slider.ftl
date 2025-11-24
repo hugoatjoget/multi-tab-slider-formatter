@@ -719,7 +719,6 @@
         // Global variables
         var multiTabSliderTabs = [];
         var activeMultiTabId = null;
-        var editModeEnabled = ${editMode?c!false};
 
         // Flag to prevent double initialization
         var isInitialized = false;
@@ -948,7 +947,7 @@
             }
         }
 
-        function openMultiTabSlider(url, actionType, customTabName) {
+        function openMultiTabSlider(url, customTabName) {
             try {
 
                 var validatedUrl = validateUrl(url);
@@ -972,7 +971,7 @@
                 if (existingTab) {
                     setActiveMultiTab(tabId);
                 } else {
-                    addMultiTabSliderTab(validatedUrl, tabId, actionType || 'view', customTabName);
+                    addMultiTabSliderTab(validatedUrl, tabId, customTabName);
                 }
                 
                 slider.classList.remove('minimized');
@@ -983,7 +982,7 @@
             }
         }
 
-        function addMultiTabSliderTab(url, tabId, actionType, customTabName) {
+        function addMultiTabSliderTab(url, tabId, customTabName) {
             try {
                 var tabTitle;
                 var urlParts = url.split('?');
@@ -1004,9 +1003,9 @@
                     tabTitle = customTabName.trim();
                 } else {
                     if (idParam) {
-                        tabTitle = (actionType === 'edit' ? 'Edit' : 'View') + ' ID: ' + idParam;
+                        tabTitle = 'ID: ' + idParam;
                     } else {
-                        tabTitle = (actionType === 'edit' ? 'Edit' : 'View') + ' Page ' + (multiTabSliderTabs.length + 1);
+                        tabTitle = 'Page ' + (multiTabSliderTabs.length + 1);
                     }
                 }
                 
@@ -1014,7 +1013,6 @@
                     id: tabId,
                     url: url,
                     title: tabTitle,
-                    actionType: actionType || 'view',
                     originalUrl: url,
                     recordId: idParam
                 };
