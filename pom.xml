@@ -4,7 +4,7 @@
     <groupId>org.joget.marketplace</groupId>
     <artifactId>multi-tab-slider-formatter</artifactId>
     <packaging>bundle</packaging>
-    <version>1.0.0</version>
+    <version>8.0.0</version>
     <name>multi-tab-slider-formatter</name>
     <url>http://www.joget.org</url>
     <build>
@@ -13,8 +13,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>2.0.2</version>
                 <configuration>
-                    <source>1.7</source>
-                    <target>1.7</target>
+                    <source>1.8</source>
+                    <target>1.8</target>
                 </configuration>
             </plugin>
             <plugin>
@@ -80,18 +80,6 @@
             <scope>provided</scope>
         </dependency>
         <!-- Change plugin specific dependencies here -->
-        <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
-            <version>2.4</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>commons-logging</groupId>
-            <artifactId>commons-logging</artifactId>
-            <version>1.1.1</version>
-            <scope>compile</scope>
-        </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>jsp-api</artifactId>
